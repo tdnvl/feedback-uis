@@ -1,2 +1,2 @@
 # Feedback UIs
-Dumb ideas for feedback-collecting UIs.
+Dumb ideas for feedback-collecting UIs, vibe-coded.
