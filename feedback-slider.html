@@ -1,0 +1,387 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback — Sentiment</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Syne+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --border: #2e2e38;
+      --text: #e8e8ec;
+      --muted: #5a5a6e;
+      --negative: #ff4d6d;
+      --positive: #00d68f;
+      --neutral: #4a4a5a;
+      --track-h: 6px;
+      --thumb-size: 28px;
+    }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 3rem 3.5rem;
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% -20%, rgba(255,255,255,0.03) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .label-tag {
+      font-family: 'Syne Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .emoji-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100px;
+      position: relative;
+    }
+
+    .emoji-wrap {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s ease, transform 0.1s ease;
+      will-change: transform, opacity;
+      line-height: 1;
+    }
+
+    .emoji-negative { color: var(--negative); }
+    .emoji-positive { color: var(--positive); }
+
+    .emoji-neutral {
+      font-size: 2rem;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+      color: var(--muted);
+    }
+
+    .slider-area {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slider-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .slider-label.neg { color: var(--negative); }
+    .slider-label.pos { color: var(--positive); }
+
+    .slider-value-badge {
+      font-family: 'Syne Mono', monospace;
+      font-size: 0.75rem;
+      padding: 0.2em 0.6em;
+      border-radius: 999px;
+      background: var(--border);
+      color: var(--muted);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .track-wrapper {
+      position: relative;
+      height: 40px;
+      display: flex;
+      align-items: center;
+    }
+
+    .track-bg {
+      position: absolute;
+      inset: 0;
+      height: var(--track-h);
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .track-fill {
+      position: absolute;
+      height: 100%;
+      top: 0;
+      background: var(--neutral);
+      border-radius: 999px;
+      transition: background 0.25s ease;
+    }
+
+    .track-center {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 18px;
+      background: var(--border);
+      border-radius: 2px;
+      z-index: 2;
+    }
+
+    input[type="range"] {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 10;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .thumb-visual {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: var(--thumb-size);
+      height: var(--thumb-size);
+      border-radius: 50%;
+      background: var(--text);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 5;
+      transition: transform 0.08s ease, background 0.25s ease;
+    }
+    .thumb-visual::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: var(--bg);
+      opacity: 0.25;
+    }
+
+    .submit-area {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    button.submit {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      padding: 0.8em 2em;
+      border-radius: 999px;
+      background: var(--text);
+      color: var(--bg);
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    button.submit:hover  { opacity: 0.85; transform: scale(1.03); }
+    button.submit:active { transform: scale(0.97); }
+
+    .confirm {
+      display: none;
+      text-align: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0;
+    }
+    .confirm.show { display: flex; }
+    .confirm-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .confirm .big { font-size: 2.5rem; line-height: 1; }
+    .confirm-score {
+      font-family: 'Syne Mono', monospace;
+      font-size: 1rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .confirm p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-family: 'Syne Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="header">
+    <span class="label-tag">Quick Feedback</span>
+    <h1>How did that land?</h1>
+  </div>
+
+  <div class="emoji-stage">
+    <div class="emoji-wrap emoji-neutral" id="emojiNeutral">·  ·  ·</div>
+    <div class="emoji-wrap emoji-negative" id="emojiNeg" style="opacity:0;font-size:1rem;">👎</div>
+    <div class="emoji-wrap emoji-positive" id="emojiPos" style="opacity:0;font-size:1rem;">👍</div>
+  </div>
+
+  <div class="slider-area">
+    <div class="slider-labels">
+      <span class="slider-label neg">Not good</span>
+      <span class="slider-value-badge" id="valueBadge">0</span>
+      <span class="slider-label pos">Loved it</span>
+    </div>
+    <div class="track-wrapper">
+      <div class="track-bg">
+        <div class="track-fill" id="trackFill"></div>
+      </div>
+      <div class="track-center"></div>
+      <div class="thumb-visual" id="thumbVisual"></div>
+      <input type="range" id="slider" min="-100" max="100" value="0" step="1" />
+    </div>
+  </div>
+
+  <div class="submit-area">
+    <button class="submit" id="submitBtn">Submit feedback</button>
+  </div>
+
+  <div class="confirm" id="confirm">
+    <div class="confirm-row">
+      <span class="big" id="confirmEmoji">✓</span>
+      <span class="confirm-score" id="confirmScore"></span>
+    </div>
+    <p>Feedback received. Thank you.</p>
+  </div>
+
+</div>
+<script>
+  const slider        = document.getElementById('slider');
+  const emojiNeg      = document.getElementById('emojiNeg');
+  const emojiPos      = document.getElementById('emojiPos');
+  const emojiNeutral  = document.getElementById('emojiNeutral');
+  const trackFill     = document.getElementById('trackFill');
+  const thumbVisual   = document.getElementById('thumbVisual');
+  const valueBadge    = document.getElementById('valueBadge');
+  const submitBtn     = document.getElementById('submitBtn');
+  const confirm       = document.getElementById('confirm');
+  const confirmEmoji  = document.getElementById('confirmEmoji');
+  const confirmScore  = document.getElementById('confirmScore');
+
+  const NEG = '#ff4d6d', POS = '#00d68f', NEU = '#4a4a5a';
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function update() {
+    const val  = parseInt(slider.value);
+    const norm = val / 100;
+    const abs  = Math.abs(norm);
+    const pct  = (val + 100) / 200 * 100;
+
+    valueBadge.textContent = val > 0 ? `+${val}` : `${val}`;
+    thumbVisual.style.left = `${pct}%`;
+
+    if (val === 0) {
+      trackFill.style.left = '50%'; trackFill.style.width = '0%';
+      trackFill.style.background = NEU;
+    } else if (val < 0) {
+      trackFill.style.left = `${pct}%`; trackFill.style.width = `${50 - pct}%`;
+      trackFill.style.background = NEG;
+    } else {
+      trackFill.style.left = '50%'; trackFill.style.width = `${pct - 50}%`;
+      trackFill.style.background = POS;
+    }
+
+    thumbVisual.style.background = val === 0 ? '#e8e8ec' : val < 0 ? NEG : POS;
+
+    if (val < 0) {
+      valueBadge.style.color = NEG; valueBadge.style.background = 'rgba(255,77,109,0.12)';
+    } else if (val > 0) {
+      valueBadge.style.color = POS; valueBadge.style.background = 'rgba(0,214,143,0.12)';
+    } else {
+      valueBadge.style.color = '#5a5a6e'; valueBadge.style.background = '#2e2e38';
+    }
+
+    const size = lerp(0.6, 5.5, abs);
+    if (abs < 0.03) {
+      emojiNeutral.style.opacity = '1';
+      emojiNeg.style.opacity = emojiPos.style.opacity = '0';
+    } else if (val < 0) {
+      emojiNeutral.style.opacity = emojiPos.style.opacity = '0';
+      emojiNeg.style.opacity = '1';
+      emojiNeg.style.fontSize = `${size}rem`;
+      emojiNeg.style.transform = `rotate(${lerp(0, -12, abs)}deg)`;
+    } else {
+      emojiNeutral.style.opacity = emojiNeg.style.opacity = '0';
+      emojiPos.style.opacity = '1';
+      emojiPos.style.fontSize = `${size}rem`;
+      emojiPos.style.transform = `rotate(${lerp(0, 12, abs)}deg)`;
+    }
+  }
+
+  slider.addEventListener('input', update);
+  update();
+
+  submitBtn.addEventListener('click', () => {
+    const val     = parseInt(slider.value);
+    const emoji   = val > 3 ? '👍' : val < -3 ? '👎' : '🤝';
+    const limit   = val >= 0 ? '+100' : '-100';
+    const display = val > 0 ? `+${val}` : `${val}`;
+    confirmEmoji.textContent = emoji;
+    confirmScore.textContent = `(${display} out of ${limit})`;
+    confirmScore.style.color = val < -3 ? 'var(--negative)' : val > 3 ? 'var(--positive)' : 'var(--muted)';
+    confirm.classList.add('show');
+    setTimeout(() => {
+      confirm.classList.remove('show');
+      slider.value = 0;
+      update();
+    }, 2800);
+  });
+</script>
+</body>
+</html>
+

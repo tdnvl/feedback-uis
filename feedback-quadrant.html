@@ -1,0 +1,488 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feedback — Emotional Context</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Syne+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f11;
+      --surface: #1a1a1f;
+      --border: #2e2e38;
+      --text: #e8e8ec;
+      --muted: #5a5a6e;
+      --thumb-size: 28px;
+    }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 3rem 3.5rem;
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% -20%, rgba(255,255,255,0.03) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .label-tag {
+      font-family: 'Syne Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    /* Face display */
+    .face-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+      min-height: 120px;
+      justify-content: center;
+    }
+
+    #faceSvg {
+      filter: drop-shadow(0 4px 18px rgba(0,0,0,0.45));
+    }
+
+    .emotion-label {
+      font-family: 'Syne Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Quadrant */
+    .q-outer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .q-mid-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .q-circle {
+      width: 280px;
+      height: 280px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+    .q-circle:active { cursor: grabbing; }
+
+    .q-bg { position: absolute; width: 50%; height: 50%; }
+    .q-bg.tl { top:0; left:0;
+      background: radial-gradient(circle at 100% 100%, rgba(255,148,52,0.15) 0%, transparent 68%); }
+    .q-bg.tr { top:0; right:0;
+      background: radial-gradient(circle at 0% 100%, rgba(255,213,48,0.15) 0%, transparent 68%); }
+    .q-bg.bl { bottom:0; left:0;
+      background: radial-gradient(circle at 100% 0%, rgba(120,110,170,0.15) 0%, transparent 68%); }
+    .q-bg.br { bottom:0; right:0;
+      background: radial-gradient(circle at 0% 0%, rgba(70,185,212,0.15) 0%, transparent 68%); }
+
+    .q-axis-h {
+      position: absolute; top: 50%; left: 0; right: 0;
+      height: 1px; background: var(--border);
+    }
+    .q-axis-v {
+      position: absolute; left: 50%; top: 0; bottom: 0;
+      width: 1px; background: var(--border);
+    }
+    .q-center-mark {
+      position: absolute; top: 50%; left: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--border);
+      transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+
+    .q-dot {
+      position: absolute;
+      width: var(--thumb-size);
+      height: var(--thumb-size);
+      border-radius: 50%;
+      background: var(--text);
+      box-shadow: 0 2px 14px rgba(0,0,0,0.55);
+      transform: translate(-50%, -50%);
+      top: 50%; left: 50%;
+      z-index: 10;
+      pointer-events: none;
+      transition: background 0.18s ease;
+    }
+    .q-dot::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: var(--bg);
+      opacity: 0.25;
+    }
+
+    .q-lbl {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .q-lbl.q-top    { color: rgba(255,185,55,0.85); }
+    .q-lbl.q-bottom { color: rgba(70,190,215,0.85); }
+    .q-lbl.q-left   {
+      color: rgba(145,125,190,0.85);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      letter-spacing: 0.12em;
+    }
+    .q-lbl.q-right  {
+      color: rgba(255,200,55,0.85);
+      writing-mode: vertical-rl;
+      letter-spacing: 0.12em;
+    }
+
+    /* Submit */
+    .submit-area {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    button.submit {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      padding: 0.8em 2em;
+      border-radius: 999px;
+      background: var(--text);
+      color: var(--bg);
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+    button.submit:hover  { opacity: 0.85; transform: scale(1.03); }
+    button.submit:active { transform: scale(0.97); }
+
+    /* Confirmation */
+    .confirm {
+      display: none;
+      text-align: center;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 0;
+    }
+    .confirm.show { display: flex; }
+    .confirm-row { display: flex; align-items: center; gap: 0.75rem; }
+    .confirm .big { font-size: 2.5rem; line-height: 1; }
+    .confirm-label {
+      font-family: 'Syne Mono', monospace;
+      font-size: 1rem;
+      white-space: nowrap;
+    }
+    .confirm p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-family: 'Syne Mono', monospace;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="header">
+    <span class="label-tag">Emotional Context</span>
+    <h1>How does the risk feel?</h1>
+  </div>
+
+  <!-- Face -->
+  <div class="face-stage">
+    <svg id="faceSvg" viewBox="0 0 180 180" width="104" height="104" xmlns="http://www.w3.org/2000/svg">
+      <circle id="faceCircle" cx="90" cy="88" r="74" fill="#888"/>
+      <ellipse id="faceCheekL" cx="46" cy="105" rx="17" ry="9" fill="rgba(225,75,55,0.32)" opacity="0"/>
+      <ellipse id="faceCheekR" cx="134" cy="105" rx="17" ry="9" fill="rgba(225,75,55,0.32)" opacity="0"/>
+      <ellipse id="faceEyeL" cx="62" cy="80" rx="10" ry="9" fill="#1a1a22"/>
+      <ellipse id="faceEyeR" cx="118" cy="80" rx="10" ry="9" fill="#1a1a22"/>
+      <circle cx="65" cy="77" r="3" fill="white" opacity="0.72"/>
+      <circle cx="121" cy="77" r="3" fill="white" opacity="0.72"/>
+      <path id="faceBrowL" d="M 46 66 L 76 62" stroke="#1a1a22" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+      <path id="faceBrowR" d="M 104 62 L 134 66" stroke="#1a1a22" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+      <path id="faceMouthPath" d="M 60 108 Q 90 108 120 108" stroke="#1a1a22" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <ellipse id="faceMouthEllipse" cx="90" cy="112" rx="0" ry="0" fill="#1a1a22" opacity="0"/>
+      <g id="faceSweat" opacity="0">
+        <path d="M 148 74 C 152 68 158 62 152 55 C 146 62 140 68 148 74 Z" fill="#5ad4e8"/>
+      </g>
+      <g id="faceSparkle" opacity="0">
+        <text x="145" y="52" font-size="17" fill="#ffd040" font-family="sans-serif">✦</text>
+        <text x="22"  y="50" font-size="13" fill="#ffd040" font-family="sans-serif">✦</text>
+      </g>
+      <g id="faceZzz" opacity="0">
+        <text x="132" y="62" font-size="13" fill="#9982c4" font-family="Syne,sans-serif" font-weight="800">z</text>
+        <text x="142" y="51" font-size="10" fill="#9982c4" font-family="Syne,sans-serif" font-weight="800">z</text>
+        <text x="150" y="42" font-size="8"  fill="#9982c4" font-family="Syne,sans-serif" font-weight="800">z</text>
+      </g>
+    </svg>
+    <span class="emotion-label" id="emotionLabel">neutral</span>
+  </div>
+
+  <!-- Quadrant circle -->
+  <div class="q-outer">
+    <span class="q-lbl q-top">Excited</span>
+    <div class="q-mid-row">
+      <span class="q-lbl q-left">Bored</span>
+      <div class="q-circle" id="qCircle">
+        <div class="q-bg tl"></div>
+        <div class="q-bg tr"></div>
+        <div class="q-bg bl"></div>
+        <div class="q-bg br"></div>
+        <div class="q-axis-h"></div>
+        <div class="q-axis-v"></div>
+        <div class="q-center-mark"></div>
+        <div class="q-dot" id="qDot"></div>
+      </div>
+      <span class="q-lbl q-right">Stimulated</span>
+    </div>
+    <span class="q-lbl q-bottom">Scared</span>
+  </div>
+
+  <!-- Submit -->
+  <div class="submit-area">
+    <button class="submit" id="submitBtn">Submit feedback</button>
+  </div>
+
+  <div class="confirm" id="confirm">
+    <div class="confirm-row">
+      <span class="big" id="confirmFace"></span>
+      <span class="confirm-label" id="confirmLabel" style="color:var(--muted)"></span>
+    </div>
+    <p>Feedback received. Thank you.</p>
+  </div>
+
+</div>
+<script>
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  // ─── Face rendering ────────────────────────────────────────────────────────
+  const faceCircle       = document.getElementById('faceCircle');
+  const faceEyeL         = document.getElementById('faceEyeL');
+  const faceEyeR         = document.getElementById('faceEyeR');
+  const faceBrowL        = document.getElementById('faceBrowL');
+  const faceBrowR        = document.getElementById('faceBrowR');
+  const faceMouthPath    = document.getElementById('faceMouthPath');
+  const faceMouthEllipse = document.getElementById('faceMouthEllipse');
+  const faceCheekL       = document.getElementById('faceCheekL');
+  const faceCheekR       = document.getElementById('faceCheekR');
+  const faceSweat        = document.getElementById('faceSweat');
+  const faceSparkle      = document.getElementById('faceSparkle');
+  const faceZzz          = document.getElementById('faceZzz');
+  const emotionLabel     = document.getElementById('emotionLabel');
+  const qCircle          = document.getElementById('qCircle');
+  const qDot             = document.getElementById('qDot');
+  const submitBtn        = document.getElementById('submitBtn');
+  const confirm          = document.getElementById('confirm');
+  const confirmFace      = document.getElementById('confirmFace');
+  const confirmLabel     = document.getElementById('confirmLabel');
+
+  // ex: −1 scared → +1 excited   |   st: −1 bored → +1 stimulated
+  let currentEx = 0, currentSt = 0;
+
+  function blendColor(ex, st) {
+    const tx = (st + 1) / 2, ty = (ex + 1) / 2;
+    const c = {
+      bl: [120, 110, 170],
+      br: [70,  185, 212],
+      tl: [255, 148,  52],
+      tr: [255, 213,  48],
+    };
+    const l3 = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+    return `rgb(${l3(l3(c.bl, c.br, tx), l3(c.tl, c.tr, tx), ty).map(Math.round).join(',')})`;
+  }
+
+  function getEmotionLabel(ex, st) {
+    const mag = Math.sqrt(ex * ex + st * st);
+    if (mag < 0.22) return 'neutral';
+    if (ex >  0.45 && st >  0.45) return 'thrilled';
+    if (ex >  0.45 && st < -0.45) return 'restless';
+    if (ex < -0.45 && st >  0.45) return 'anxious';
+    if (ex < -0.45 && st < -0.45) return 'resigned';
+    if (ex >  0.6)  return 'excited';
+    if (ex < -0.6)  return 'scared';
+    if (st >  0.6)  return 'energized';
+    if (st < -0.6)  return 'disengaged';
+    if (ex >  0.2 && st >  0.2) return 'curious';
+    if (ex >  0.2 && st < -0.2) return 'eager';
+    if (ex < -0.2 && st >  0.2) return 'uneasy';
+    if (ex < -0.2 && st < -0.2) return 'hesitant';
+    return 'unsettled';
+  }
+
+  function getEmotionEmoji(ex, st) {
+    const label = getEmotionLabel(ex, st);
+    const map = {
+      thrilled: '🤩', restless: '😤', anxious: '😰', resigned: '😔',
+      excited: '😄', scared: '😨', energized: '⚡', disengaged: '😑',
+      curious: '🤔', eager: '😊', uneasy: '😟', hesitant: '😬',
+      neutral: '😐', unsettled: '😕',
+    };
+    return map[label] || '😐';
+  }
+
+  function updateFace(ex, st) {
+    currentEx = ex; currentSt = st;
+    const color = blendColor(ex, st);
+    faceCircle.style.fill = color;
+
+    const tx = (st + 1) / 2, ty = (ex + 1) / 2;
+    const eyeRy = lerp(lerp(6, 13, tx), lerp(4, 8, tx), ty);
+    faceEyeL.setAttribute('ry', eyeRy.toFixed(1));
+    faceEyeR.setAttribute('ry', eyeRy.toFixed(1));
+
+    const anxiety   = Math.max(0, (-ex) * st);
+    const openBlend = Math.min(1, anxiety * 2.5);
+    const mouthCtrlY = 108 - ex * 22;
+    faceMouthPath.setAttribute('d', `M 60 108 Q 90 ${mouthCtrlY.toFixed(1)} 120 108`);
+    faceMouthPath.setAttribute('opacity', (1 - openBlend).toFixed(2));
+    faceMouthEllipse.setAttribute('opacity', openBlend.toFixed(2));
+    faceMouthEllipse.setAttribute('rx', lerp(0, 20, openBlend).toFixed(1));
+    faceMouthEllipse.setAttribute('ry', lerp(0, 12, openBlend).toFixed(1));
+
+    let browY = ex > 0 ? lerp(64, 53, ex) : lerp(64, 67, -ex);
+    if (st < 0) browY = lerp(browY, browY + 4, -st);
+    const innerLift = Math.max(0, -ex) * 10;
+    faceBrowL.setAttribute('d', `M 46 ${browY.toFixed(1)} L 76 ${(browY - innerLift).toFixed(1)}`);
+    faceBrowR.setAttribute('d', `M 104 ${(browY - innerLift).toFixed(1)} L 134 ${browY.toFixed(1)}`);
+
+    faceCheekL.setAttribute('opacity', Math.max(0, ex * 0.68).toFixed(2));
+    faceCheekR.setAttribute('opacity', Math.max(0, ex * 0.68).toFixed(2));
+    faceSweat.setAttribute('opacity', Math.min(1, anxiety * 1.9).toFixed(2));
+    faceSparkle.setAttribute('opacity', Math.max(0, Math.min(1, ex * st * 1.6)).toFixed(2));
+    faceZzz.setAttribute('opacity', Math.max(0, -st * 0.78).toFixed(2));
+
+    qDot.style.background = color;
+    emotionLabel.textContent = getEmotionLabel(ex, st);
+  }
+
+  // ─── Drag logic ────────────────────────────────────────────────────────────
+  let isDragging = false;
+
+  function resolvePos(clientX, clientY) {
+    const rect    = qCircle.getBoundingClientRect();
+    const r       = rect.width / 2;
+    const maxDist = r - 15;
+    let dx = clientX - (rect.left + r);
+    let dy = clientY - (rect.top  + r);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxDist) { const s = maxDist / dist; dx *= s; dy *= s; }
+    return {
+      vx: (dx + r) / (r * 2),
+      vy: (dy + r) / (r * 2),
+      nx: dx / maxDist,
+      ny: dy / maxDist,
+    };
+  }
+
+  function applyPos({ vx, vy, nx, ny }) {
+    qDot.style.left = `${(vx * 100).toFixed(2)}%`;
+    qDot.style.top  = `${(vy * 100).toFixed(2)}%`;
+    updateFace(-ny, nx);
+  }
+
+  function xy(e) {
+    const s = e.touches ? e.touches[0] : e;
+    return [s.clientX, s.clientY];
+  }
+
+  qCircle.addEventListener('mousedown', e => {
+    isDragging = true;
+    applyPos(resolvePos(...xy(e)));
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (isDragging) applyPos(resolvePos(...xy(e)));
+  });
+  document.addEventListener('mouseup',    () => { isDragging = false; });
+  document.addEventListener('mouseleave', () => { isDragging = false; });
+
+  qCircle.addEventListener('touchstart', e => {
+    isDragging = true;
+    applyPos(resolvePos(...xy(e)));
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (isDragging) applyPos(resolvePos(...xy(e)));
+  }, { passive: true });
+  document.addEventListener('touchend', () => { isDragging = false; });
+
+  // ─── Submit ────────────────────────────────────────────────────────────────
+  submitBtn.addEventListener('click', () => {
+    const label = getEmotionLabel(currentEx, currentSt);
+    const emoji = getEmotionEmoji(currentEx, currentSt);
+    const color = blendColor(currentEx, currentSt);
+    confirmFace.textContent  = emoji;
+    confirmLabel.textContent = label;
+    confirmLabel.style.color = color;
+    confirm.classList.add('show');
+    setTimeout(() => {
+      confirm.classList.remove('show');
+      qDot.style.left = '50%';
+      qDot.style.top  = '50%';
+      updateFace(0, 0);
+    }, 2800);
+  });
+
+  updateFace(0, 0);
+</script>
+</body>
+</html>
+
